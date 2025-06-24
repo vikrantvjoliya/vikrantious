@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../utils/supabaseClient';
 
 const LOCAL_STORAGE_KEY = 'guest_user_id';
 
