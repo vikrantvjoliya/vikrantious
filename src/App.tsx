@@ -8,6 +8,7 @@ import DrawingNotesPage from './pages/drawing-notes';
 import FileNotesPage from './pages/file-notes';
 import LoginPage from './pages/login';
 import SuikaGamePage from './pages/suika-game';
+import SessionTimeoutHandler from './components/SessionTimeoutHandler';
 
 function RequireAuth({ children }: PropsWithChildren<{ children: ReactNode }>) {
   const userId = localStorage.getItem('user_id');
@@ -21,6 +22,7 @@ function RequireAuth({ children }: PropsWithChildren<{ children: ReactNode }>) {
 function App() {
   return (
     <BrowserRouter>
+      <SessionTimeoutHandler />
       <AppLayout>
         <NavBar />
         <Routes>
