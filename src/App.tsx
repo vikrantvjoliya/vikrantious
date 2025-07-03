@@ -60,9 +60,9 @@ function App() {
           <Route
             path="/suika-game"
             element={
-              <RequireAuth>
+              // <RequireAuth>
                 <SuikaGamePage />
-              </RequireAuth>
+              // </RequireAuth>
             }
           />
         </Routes>
