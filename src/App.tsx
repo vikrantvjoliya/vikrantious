@@ -7,6 +7,7 @@ import TextNotesPage from './pages/text-notes';
 import DrawingNotesPage from './pages/drawing-notes';
 import FileNotesPage from './pages/file-notes';
 import LoginPage from './pages/login';
+import SuikaGamePage from './pages/suika-game';
 
 function RequireAuth({ children }: PropsWithChildren<{ children: ReactNode }>) {
   const userId = localStorage.getItem('user_id');
@@ -53,6 +54,14 @@ function App() {
             element={
               <RequireAuth>
                 <FileNotesPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/suika-game"
+            element={
+              <RequireAuth>
+                <SuikaGamePage />
               </RequireAuth>
             }
           />

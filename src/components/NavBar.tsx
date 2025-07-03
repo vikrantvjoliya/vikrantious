@@ -5,12 +5,14 @@ import BrushIcon from '@mui/icons-material/Brush';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { NavLink, useNavigate } from 'react-router-dom';
+import SuikaGameIcon from './SuikaGameIcon';
 
 const navLinks = [
   { to: '/', label: 'Home', icon: <HomeIcon /> },
   { to: '/text-notes', label: 'Text Notes', icon: <NotesIcon /> },
   { to: '/drawing-notes', label: 'Drawing Notes', icon: <BrushIcon /> },
   { to: '/file-notes', label: 'File Notes', icon: <InsertDriveFileIcon /> },
+  { to: '/suika-game', label: 'Suika Game', icon: <SuikaGameIcon /> },
 ];
 
 export default function NavBar() {
