@@ -1,8 +1,13 @@
+import AppLayout from "@/components/AppLayout";
 import { useRef, useState, useEffect } from 'react';
-import { Box, Button, Input, Typography, Stack, Alert, Card, CardContent, Fab, Tooltip, Fade } from '@mui/material';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Alert } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@radix-ui/react-tooltip";
 import { supabase } from '../utils/supabaseClient';
 import { useGuestAuth } from '../utils/useGuestAuth';
+import '../styles/global.css';
 
 export default function FileNotesPage() {
   const userId = useGuestAuth();
@@ -12,8 +17,7 @@ export default function FileNotesPage() {
   const [files, setFiles] = useState<any[]>([]); // List of uploaded files
   const [txtContents, setTxtContents] = useState<Record<string, string>>({});
   const inputRef = useRef<HTMLInputElement>(null);
-  const [show, setShow] = useState(false);
-  useEffect(() => { setShow(true); }, []);
+  useEffect(() => { }, []);
 
   // Fetch all files for this user
   const fetchFiles = async () => {
@@ -65,69 +69,73 @@ export default function FileNotesPage() {
   };
 
   return (
-    <Box maxWidth={600} mx="auto" mt={4}>
-      <Fade in={show} timeout={600}>
-        <Card sx={{ mb: 3, boxShadow: 2 }}>
-          <CardContent>
-            <Stack spacing={2}>
-              <Input type="file" inputRef={inputRef} onChange={handleFileChange} />
-              <Button onClick={handleUpload} disabled={!file || loading} variant="contained">
+    <AppLayout>
+      <section className="w-full flex flex-col items-center gap-8">
+        <Card className="w-full max-w-xl mx-auto shadow-lg border border-gray-100 p-0">
+          <CardContent className="p-6 flex flex-col gap-4">
+            <div className="flex flex-col items-center gap-3 w-full">
+              <Input type="file" ref={inputRef} onChange={handleFileChange} className="w-full max-w-md" />
+              <Button onClick={handleUpload} disabled={!file || loading} className="w-full max-w-md">
                 {loading ? 'Uploading...' : 'Upload'}
               </Button>
-              {error && <Alert severity="error">{error}</Alert>}
-            </Stack>
+              {error && <Alert variant="destructive">{error}</Alert>}
+            </div>
           </CardContent>
         </Card>
-      </Fade>
-      <Typography variant="h6" mb={1}>Your Uploaded Files</Typography>
-      <Fade in={show} timeout={1000}>
-        <Box>
-          {files.length === 0 && <Typography color="text.secondary">No files uploaded yet.</Typography>}
+        <div className="w-full max-w-xl mx-auto flex flex-col gap-4">
+          {files.length === 0 && <p className="text-gray-500 text-center">No files uploaded yet.</p>}
           {files.map(f => {
             const { data: urlData } = supabase.storage.from('notes-files').getPublicUrl(f.name);
             const url = urlData?.publicUrl;
             if (!url) return null;
             if (f.name.endsWith('.txt')) {
               return (
-                <Card key={f.name} sx={{ boxShadow: 2, mb: 2 }}>
+                <Card key={f.name} className="shadow-md border border-gray-100">
                   <CardContent>
-                    <Typography fontWeight={600}>{f.name}</Typography>
-                    <Typography component="pre" fontSize={14}>{txtContents[f.name] || 'Loading...'}</Typography>
+                    <h3 className="font-semibold mb-2">{f.name}</h3>
+                    <pre className="text-sm font-mono bg-gray-50 rounded p-2 overflow-x-auto">{txtContents[f.name] || 'Loading...'}</pre>
                   </CardContent>
                 </Card>
               );
             }
             if (f.name.endsWith('.pdf')) {
               return (
-                <Card key={f.name} sx={{ boxShadow: 2, mb: 2 }}>
+                <Card key={f.name} className="shadow-md border border-gray-100">
                   <CardContent>
-                    <Typography fontWeight={600}>{f.name}</Typography>
-                    <Box mt={2} border={1} borderRadius={2} overflow="hidden">
-                      <iframe src={url} width="100%" height={500} title={f.name} style={{ border: 0, width: '100%' }} />
-                    </Box>
+                    <h3 className="font-semibold mb-2">{f.name}</h3>
+                    <div className="mt-2 border border-gray-200 rounded-md overflow-hidden">
+                      <iframe src={url} width="100%" height={500} title={f.name} className="w-full h-full border-0" />
+                    </div>
                   </CardContent>
                 </Card>
               );
             }
             // Show a link for other file types
             return (
-              <Card key={f.name} sx={{ boxShadow: 2, mb: 2 }}>
+              <Card key={f.name} className="shadow-md border border-gray-100">
                 <CardContent>
-                  <Typography fontWeight={600}>{f.name}</Typography>
-                  <Button href={url} target="_blank" rel="noopener" variant="outlined">Download</Button>
+                  <h3 className="font-semibold mb-2">{f.name}</h3>
+                  <a href={url} target="_blank" rel="noopener" className="inline-block px-4 py-2 border rounded bg-white text-blue-600 hover:bg-blue-50 transition">Download</a>
                 </CardContent>
               </Card>
             );
           })}
-        </Box>
-      </Fade>
-      <Fade in={show} timeout={1200}>
-        <Tooltip title="Upload File">
-          <Fab color="primary" sx={{ position: 'fixed', bottom: 32, right: 32 }} onClick={() => inputRef.current?.click()}>
-            <UploadFileIcon />
-          </Fab>
-        </Tooltip>
-      </Fade>
-    </Box>
+        </div>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={() => inputRef.current?.click()}
+                className="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg"
+                aria-label="Upload File"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-upload-cloud"><path d="M16 16l4 4m0-4-4 4M8 12H3a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h6"/><path d="M13.5 4a4 4 0 0 1-8 0"/><path d="M19 16v6"/><path d="M22 19H16"/></svg>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Upload File</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </section>
+    </AppLayout>
   );
 }

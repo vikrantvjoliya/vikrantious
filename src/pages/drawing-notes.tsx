@@ -1,8 +1,11 @@
+import AppLayout from "@/components/AppLayout";
 import { useRef, useState, useEffect } from 'react';
-import { Box, Button, Stack, Typography, Card, CardContent, Fab, Tooltip, Fade } from '@mui/material';
-import ClearIcon from '@mui/icons-material/Clear';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@radix-ui/react-tooltip";
 import { supabase } from '../utils/supabaseClient';
 import { useGuestAuth } from '../utils/useGuestAuth';
+import '../styles/global.css';
 
 export default function DrawingNotesPage() {
   const userId = useGuestAuth();
@@ -10,8 +13,7 @@ export default function DrawingNotesPage() {
   const [drawing, setDrawing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
-  const [show, setShow] = useState(false);
-  useEffect(() => { setShow(true); }, []);
+  useEffect(() => { }, []);
 
   const handleMouseDown = () => setDrawing(true);
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -54,49 +56,54 @@ export default function DrawingNotesPage() {
     if (data.publicUrl) setImgUrl(data.publicUrl);
   };
   return (
-    <Box maxWidth={600} mx="auto" mt={4}>
-      <Fade in={show} timeout={600}>
-        <Card sx={{ mb: 3, boxShadow: 2 }}>
-          <CardContent>
-            <Stack direction="row" spacing={2} mb={2}>
-              <Button onClick={handleClear} variant="outlined">Clear</Button>
-              <Button onClick={handleSave} variant="contained" disabled={loading}>{loading ? 'Saving...' : 'Save'}</Button>
-              <Button onClick={handleLoad} variant="contained">Load</Button>
-            </Stack>
-            <Box display="flex" justifyContent="center">
+    <AppLayout>
+      <section className="w-full flex flex-col items-center gap-8">
+        <Card className="w-full max-w-xl mx-auto shadow-lg border border-gray-100 p-0">
+          <CardContent className="p-6 flex flex-col gap-4">
+            <div className="flex flex-row gap-3 w-full justify-center">
+              <Button variant="outline" onClick={handleClear}>Clear</Button>
+              <Button onClick={handleSave} disabled={loading}>{loading ? 'Saving...' : 'Save'}</Button>
+              <Button onClick={handleLoad}>Load</Button>
+            </div>
+            <div className="flex justify-center">
               <canvas
                 ref={canvasRef}
                 width={500}
                 height={300}
-                style={{ border: '1px solid #23232b', borderRadius: 8, background: '#18181b' }}
+                className="drawing-canvas border border-gray-200 rounded-lg bg-gray-50"
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
               />
-            </Box>
+            </div>
           </CardContent>
         </Card>
-      </Fade>
-      {imgUrl && (
-        <Fade in={show} timeout={1000}>
-          <Card sx={{ boxShadow: 2 }}>
-            <CardContent>
-              <Typography variant="subtitle2" mb={1}>Saved Drawing:</Typography>
-              <Box display="flex" justifyContent="center">
-                <img src={imgUrl} alt="Saved Drawing" style={{ maxWidth: 500, border: '1px solid #eee', borderRadius: 8 }} />
-              </Box>
+        {imgUrl && (
+          <Card className="w-full max-w-xl mx-auto shadow-lg border border-gray-100">
+            <CardContent className="p-6 flex flex-col items-center">
+              <div className="text-sm font-semibold mb-2">Saved Drawing:</div>
+              <img src={imgUrl} alt="Saved Drawing" className="drawing-image max-w-full border border-gray-200 rounded-lg" />
             </CardContent>
           </Card>
-        </Fade>
-      )}
-      <Fade in={show} timeout={1200}>
-        <Tooltip title="Clear Canvas">
-          <Fab color="secondary" sx={{ position: 'fixed', bottom: 32, right: 32 }} onClick={handleClear}>
-            <ClearIcon />
-          </Fab>
-        </Tooltip>
-      </Fade>
-    </Box>
+        )}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                className="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg"
+                onClick={handleClear}
+                aria-label="Clear Canvas"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Clear Canvas</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </section>
+    </AppLayout>
   );
 }

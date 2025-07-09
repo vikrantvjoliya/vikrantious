@@ -1,4 +1,6 @@
+import AppLayout from "@/components/AppLayout";
 import React, { useEffect, useRef } from "react";
+import '../styles/global.css';
 
 const MATTER_URL = "https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js";
 const TONE_URL = "https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js";
@@ -401,131 +403,47 @@ const SuikaGame: React.FC = () => {
   }, []);
 
   return (
-    <div
-      className="game-container"
-      style={{
-        maxWidth: 500, // was 900
-        margin: "0 auto",
-        padding: 10,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
-    >
-      <h1>Fruity Fall</h1>
-      <div
-        className="game-info"
-        style={{
-          display: "flex",
-          justifyContent: "space-around",
-          width: "100%",
-          marginBottom: 16,
-        }}
-      >
-        <div className="info-box">
-          <span>Score</span>
-          <div ref={scoreRef} className="value">
-            0
+    <AppLayout>
+      <section className="w-full flex flex-col items-center gap-8">
+        <div className="w-full max-w-xl mx-auto shadow-lg border border-gray-100 rounded-2xl bg-white p-6 flex flex-col items-center">
+          <h1 className="text-2xl font-bold mb-4 text-center">Fruity Fall</h1>
+          <div className="game-info flex justify-around w-full mb-4">
+            <div className="info-box">
+              <span>Score</span>
+              <div ref={scoreRef} className="value">0</div>
+            </div>
+            <div className="info-box">
+              <span>Next</span>
+              <div ref={nextFruitRef} className="value"></div>
+            </div>
+          </div>
+          <div className="canvas-wrapper border-8 border-accent w-full max-w-xl relative mx-auto">
+            <canvas
+              ref={canvasRef}
+              id="game-canvas"
+              className="w-full rounded-xl block"
+            />
+            <div
+              ref={gameOverModalRef}
+              className="game-over-modal"
+            >
+              <div className="game-over-content">
+                <div className="game-over-title">Game Over!</div>
+                <div className="final-score">
+                  Your Score: <span ref={finalScoreRef} className="value">0</span>
+                </div>
+                <button
+                  ref={restartButtonRef}
+                  id="restart-button"
+                >
+                  Play Again
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="info-box">
-          <span>Next</span>
-          <div ref={nextFruitRef} className="value"></div>
-        </div>
-      </div>
-      <div
-        className="canvas-wrapper"
-        style={{
-          position: "relative",
-          border: "12px solid #E1C699",
-          borderRadius: 30,
-          background: "#F3EAD8",
-          maxWidth: 500, // was 900
-          width: "100%",
-        }}
-      >
-        <canvas
-          ref={canvasRef}
-          id="game-canvas"
-          style={{ width: "100%", borderRadius: 18, display: "block" }}
-        />
-        <div
-          ref={gameOverModalRef}
-          className="game-over-modal"
-          style={{
-            display: "none",
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            background: "rgba(93,64,55,0.7)",
-            justifyContent: "center",
-            alignItems: "center",
-            textAlign: "center",
-            flexDirection: "column",
-            borderRadius: 18,
-            zIndex: 100,
-          }}
-        >
-          <div
-            className="game-over-content"
-            style={{
-              background: "#FFFBEB",
-              padding: 40,
-              borderRadius: 25,
-              border: "8px solid #E1C699",
-              boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
-              maxWidth: "80%",
-            }}
-          >
-            <div
-              className="game-over-title"
-              style={{
-                fontSize: "3rem",
-                fontWeight: 700,
-                color: "#EF5350",
-                marginBottom: 10,
-              }}
-            >
-              Game Over!
-            </div>
-            <div
-              className="final-score"
-              style={{
-                fontSize: "1.5rem",
-                color: "#7A5548",
-                marginBottom: 30,
-              }}
-            >
-              Your Score:{" "}
-              <span ref={finalScoreRef} className="value">
-                0
-              </span>
-            </div>
-            <button
-              ref={restartButtonRef}
-              style={{
-                backgroundColor: "#FF8A65",
-                color: "white",
-                border: "none",
-                padding: "15px 30px",
-                borderRadius: 50,
-                fontFamily: "Fredoka, sans-serif",
-                fontSize: "1.5rem",
-                fontWeight: 700,
-                cursor: "pointer",
-                transition: "background-color 0.3s ease, transform 0.1s ease",
-                boxShadow: "0 5px 0px #d86a49",
-                borderBottom: "2px solid #b3583b",
-              }}
-            >
-              Play Again
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+      </section>
+    </AppLayout>
   );
 };
 
