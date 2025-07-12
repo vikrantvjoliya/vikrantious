@@ -1,14 +1,15 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import type { PropsWithChildren, ReactNode } from 'react';
 import AppLayout from './components/AppLayout';
-import NavBar from './components/NavBar';
 import HomePage from './pages/index';
 import TextNotesPage from './pages/text-notes';
 import DrawingNotesPage from './pages/drawing-notes';
 import FileNotesPage from './pages/file-notes';
+import BlogPage from './pages/blog';
 import LoginPage from './pages/login';
 import SuikaGamePage from './pages/suika-game';
 import SessionTimeoutHandler from './components/SessionTimeoutHandler';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 function RequireAuth({ children }: PropsWithChildren<{ children: ReactNode }>) {
   const userId = localStorage.getItem('user_id');
@@ -21,17 +22,18 @@ function RequireAuth({ children }: PropsWithChildren<{ children: ReactNode }>) {
 
 function App() {
   return (
-    <BrowserRouter>
-      <SessionTimeoutHandler />
-      <AppLayout>
-        <NavBar />
+    <ThemeProvider>
+      <BrowserRouter>
+        <SessionTimeoutHandler />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
             path="/"
             element={
               <RequireAuth>
-                <HomePage />
+                <AppLayout>
+                  <HomePage />
+                </AppLayout>
               </RequireAuth>
             }
           />
@@ -39,7 +41,9 @@ function App() {
             path="/text-notes"
             element={
               <RequireAuth>
-                <TextNotesPage />
+                <AppLayout>
+                  <TextNotesPage />
+                </AppLayout>
               </RequireAuth>
             }
           />
@@ -47,7 +51,9 @@ function App() {
             path="/drawing-notes"
             element={
               <RequireAuth>
-                <DrawingNotesPage />
+                <AppLayout>
+                  <DrawingNotesPage />
+                </AppLayout>
               </RequireAuth>
             }
           />
@@ -55,21 +61,33 @@ function App() {
             path="/file-notes"
             element={
               <RequireAuth>
-                <FileNotesPage />
+                <AppLayout>
+                  <FileNotesPage />
+                </AppLayout>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/blog"
+            element={
+              <RequireAuth>
+                <AppLayout>
+                  <BlogPage />
+                </AppLayout>
               </RequireAuth>
             }
           />
           <Route
             path="/suika-game"
             element={
-              // <RequireAuth>
+              <AppLayout>
                 <SuikaGamePage />
-              // </RequireAuth>
+              </AppLayout>
             }
           />
         </Routes>
-      </AppLayout>
-    </BrowserRouter>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 
