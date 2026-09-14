@@ -1,81 +1,96 @@
-import { Drawer, List, ListItem, ListItemButton, ListItemIcon, Box, Tooltip } from '@mui/material';
-import HomeIcon from '@mui/icons-material/Home';
-import NotesIcon from '@mui/icons-material/Notes';
-import BrushIcon from '@mui/icons-material/Brush';
-import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
-import LogoutIcon from '@mui/icons-material/Logout';
-import { NavLink, useNavigate } from 'react-router-dom';
-import SuikaGameIcon from './SuikaGameIcon';
-
-const navLinks = [
-  { to: '/', label: 'Home', icon: <HomeIcon /> },
-  { to: '/text-notes', label: 'Text Notes', icon: <NotesIcon /> },
-  { to: '/drawing-notes', label: 'Drawing Notes', icon: <BrushIcon /> },
-  { to: '/file-notes', label: 'File Notes', icon: <InsertDriveFileIcon /> },
-  { to: '/suika-game', label: 'Suika Game', icon: <SuikaGameIcon /> },
+import { useState } from "react";
+import { NavLink, Link } from "react-router-dom";
+import { Alert } from "@mui/material";
+import GridViewRounded from "@mui/icons-material/GridViewRounded";
+import DescriptionOutlined from "@mui/icons-material/DescriptionOutlined";
+import GestureRounded from "@mui/icons-material/GestureRounded";
+import FolderOutlined from "@mui/icons-material/FolderOutlined";
+import SportsEsportsOutlined from "@mui/icons-material/SportsEsportsOutlined";
+import LogoutRounded from "@mui/icons-material/LogoutRounded";
+import ArrowForwardRounded from "@mui/icons-material/ArrowForwardRounded";
+import { useAuth } from "../auth/AuthContext";
+import { supabase } from "../utils/supabaseClient";
+const links = [
+  { to: "/", label: "Overview", icon: <GridViewRounded /> },
+  { to: "/text-notes", label: "Text notes", icon: <DescriptionOutlined /> },
+  { to: "/drawing-notes", label: "Drawing studio", icon: <GestureRounded /> },
+  { to: "/file-notes", label: "Files", icon: <FolderOutlined /> },
 ];
-
 export default function NavBar() {
-  const navigate = useNavigate();
-  const handleLogout = () => {
-    localStorage.removeItem('user_id');
-    localStorage.removeItem('username');
-    navigate('/login');
+  const { user } = useAuth();
+  const [error, setError] = useState(false);
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut({ scope: "local" });
+    setError(Boolean(error));
   };
-
   return (
-    <Drawer
-      variant="permanent"
-      sx={{
-        width: 72,
-        flexShrink: 0,
-        [`& .MuiDrawer-paper`]: {
-          width: 72,
-          boxSizing: 'border-box',
-          background: '#18181b',
-          color: '#fff',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderRight: '1px solid #23232b',
-        },
-      }}
-    >
-      <Box flex={1} display="flex" flexDirection="column" alignItems="center" justifyContent="center" mt={4}>
-        <List>
-          {navLinks.map(link => (
-            <Tooltip title={link.label} placement="right" key={link.to} arrow>
-              <ListItem disablePadding sx={{ mb: 1 }}>
-                <ListItemButton
-                  component={NavLink}
-                  to={link.to}
-                  sx={{
-                    minHeight: 56,
-                    justifyContent: 'center',
-                    borderRadius: 2,
-                    '&.active': {
-                      background: '#23232b',
-                      color: '#90caf9',
-                    },
-                  }}
-                >
-                  <ListItemIcon sx={{ color: 'inherit', minWidth: 0, justifyContent: 'center' }}>{link.icon}</ListItemIcon>
-                </ListItemButton>
-              </ListItem>
-            </Tooltip>
-          ))}
-        </List>
-      </Box>
-      <Box mb={2}>
-        <Tooltip title="Logout" placement="right" arrow>
-          <ListItemButton onClick={handleLogout} sx={{ minHeight: 56, justifyContent: 'center', borderRadius: 2 }}>
-            <ListItemIcon sx={{ color: 'inherit', minWidth: 0, justifyContent: 'center' }}>
-              <LogoutIcon />
-            </ListItemIcon>
-          </ListItemButton>
-        </Tooltip>
-      </Box>
-    </Drawer>
+    <aside className="sidebar">
+      <Link className="brand" to="/" aria-label="Vikrantious home">
+        <span className="brand-mark">
+          v<span>.</span>
+        </span>
+        <span>
+          vikrantious<span className="brand-caption">PERSONAL WORKSPACE</span>
+        </span>
+      </Link>
+      <div className="nav-section-label">YOUR WORKSPACE</div>
+      <nav aria-label="Main navigation" className="nav-links">
+        {links.map((link) => (
+          <NavLink
+            key={link.to}
+            to={link.to}
+            end
+            className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
+          >
+            {link.icon}
+            <span>{link.label}</span>
+            {link.to === "/" && <span className="active-dot" />}
+          </NavLink>
+        ))}
+        <div className="nav-section-label break-label">
+          A MOMENT TO YOURSELF
+        </div>
+        <NavLink
+          to="/suika-game"
+          className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
+        >
+          <SportsEsportsOutlined />
+          <span>Fruity Fall</span>
+          <span className="tiny-tag">PLAY</span>
+        </NavLink>
+      </nav>
+      <div className="sidebar-bottom">
+        <div className="sidebar-note">
+          <span className="sparkle">✳</span>
+          <h3>Room to think.</h3>
+          <p>
+            Capture the little things.
+            <br />
+            Make space for what’s next.
+          </p>
+          <Link to="/text-notes">
+            Write something <ArrowForwardRounded fontSize="small" />
+          </Link>
+        </div>
+        {error && <Alert severity="error">Couldn’t sign out. Try again.</Alert>}
+        {user ? (
+          <button className="account-button" onClick={logout}>
+            <span className="avatar">{user.email?.[0].toUpperCase()}</span>
+            <span className="account-text">
+              My workspace<small>Sign out</small>
+            </span>
+            <LogoutRounded fontSize="small" />
+          </button>
+        ) : (
+          <Link className="account-button" to="/login">
+            <span className="avatar">V</span>
+            <span className="account-text">
+              Make yourself at home<small>Sign in to your workspace</small>
+            </span>
+            <ArrowForwardRounded fontSize="small" />
+          </Link>
+        )}
+      </div>
+    </aside>
   );
 }

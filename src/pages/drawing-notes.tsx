@@ -1,102 +1,200 @@
-import { useRef, useState, useEffect } from 'react';
-import { Box, Button, Stack, Typography, Card, CardContent, Fab, Tooltip, Fade } from '@mui/material';
-import ClearIcon from '@mui/icons-material/Clear';
-import { supabase } from '../utils/supabaseClient';
-import { useGuestAuth } from '../utils/useGuestAuth';
-
+import { useRef, useState, type PointerEvent } from "react";
+import { Alert, Button } from "@mui/material";
+import { supabase } from "../utils/supabaseClient";
+import { useGuestAuth } from "../utils/useGuestAuth";
+import PageHeading from "../components/PageHeading";
+const colors = ["#35543b", "#3d4756", "#b97855", "#8d7eac", "#7397b0"];
 export default function DrawingNotesPage() {
   const userId = useGuestAuth();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [drawing, setDrawing] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [imgUrl, setImgUrl] = useState<string | null>(null);
-  const [show, setShow] = useState(false);
-  useEffect(() => { setShow(true); }, []);
-
-  const handleMouseDown = () => setDrawing(true);
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!drawing) return;
-    const ctx = canvasRef.current?.getContext('2d');
-    if (ctx) {
-      ctx.lineWidth = 2;
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = '#90caf9';
-      ctx.lineTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const drawing = useRef(false);
+  const [color, setColor] = useState(colors[0]);
+  const [size, setSize] = useState(3);
+  const [busy, setBusy] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const point = (event: PointerEvent<HTMLCanvasElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return [
+      ((event.clientX - rect.left) * event.currentTarget.width) / rect.width,
+      ((event.clientY - rect.top) * event.currentTarget.height) / rect.height,
+    ];
+  };
+  const start = (e: PointerEvent<HTMLCanvasElement>) => {
+    if (busy) return;
+    const ctx = canvas.current?.getContext("2d");
+    if (!ctx) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drawing.current = true;
+    setDirty(true);
+    setMessage("");
+    const [x, y] = point(e);
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = size;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+  const move = (e: PointerEvent<HTMLCanvasElement>) => {
+    if (!drawing.current) return;
+    const ctx = canvas.current?.getContext("2d");
+    const [x, y] = point(e);
+    ctx?.lineTo(x, y);
+    ctx?.stroke();
+  };
+  const clear = () => {
+    if (
+      dirty &&
+      !window.confirm("Clear the canvas? Unsaved marks will be lost.")
+    )
+      return;
+    const ctx = canvas.current?.getContext("2d");
+    ctx?.clearRect(0, 0, 1000, 600);
+    setDirty(false);
+    setMessage("");
+  };
+  const save = async () => {
+    if (!canvas.current || !userId) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.current!.toBlob(resolve, "image/png"),
+      );
+      if (!blob) throw new Error("Canvas unavailable");
+      const { error } = await supabase.storage
+        .from("notes-files")
+        .upload(`${userId}/drawings/canvas.png`, blob, {
+          upsert: true,
+          contentType: "image/png",
+        });
+      if (error) throw error;
+      setDirty(false);
+      setMessage("Drawing saved. You can load it next time you’re here.");
+    } catch {
+      setError(
+        "Couldn’t save your drawing. Your canvas is still here — try again.",
+      );
+    } finally {
+      setBusy(false);
     }
   };
-  const handleMouseUp = () => {
-    setDrawing(false);
-    const ctx = canvasRef.current?.getContext('2d');
-    if (ctx) ctx.beginPath();
-  };
-  const handleClear = () => {
-    const ctx = canvasRef.current?.getContext('2d');
-    if (ctx) ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-  };
-  const handleSave = async () => {
-    if (!canvasRef.current || !userId) return;
-    setLoading(true);
-    const dataUrl = canvasRef.current.toDataURL('image/png');
-    const blob = await (await fetch(dataUrl)).blob();
-    const fileName = `drawing-${userId}.png`;
-    await supabase.storage.from('notes-files').upload(fileName, blob, { upsert: true, contentType: 'image/png' });
-    const { data } = supabase.storage.from('notes-files').getPublicUrl(fileName);
-    setImgUrl(data.publicUrl);
-    setLoading(false);
-  };
-  const handleLoad = async () => {
-    if (!userId) return;
-    const fileName = `drawing-${userId}.png`;
-    const { data } = supabase.storage.from('notes-files').getPublicUrl(fileName);
-    if (data.publicUrl) setImgUrl(data.publicUrl);
+  const load = async () => {
+    if (
+      dirty &&
+      !window.confirm(
+        "Replace the canvas with your saved drawing? Unsaved marks will be lost.",
+      )
+    )
+      return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const { data, error } = await supabase.storage
+        .from("notes-files")
+        .download(`${userId}/drawings/canvas.png`);
+      if (error || !data) throw error;
+      const bitmap = await createImageBitmap(data);
+      const ctx = canvas.current?.getContext("2d");
+      ctx?.clearRect(0, 0, 1000, 600);
+      ctx?.drawImage(bitmap, 0, 0);
+      bitmap.close();
+      setDirty(false);
+      setMessage("Your saved drawing is ready.");
+    } catch {
+      setError(
+        "Couldn’t load a saved drawing. Save your first drawing, or try again.",
+      );
+    } finally {
+      setBusy(false);
+    }
   };
   return (
-    <Box maxWidth={600} mx="auto" mt={4}>
-      <Fade in={show} timeout={600}>
-        <Card sx={{ mb: 3, boxShadow: 2 }}>
-          <CardContent>
-            <Stack direction="row" spacing={2} mb={2}>
-              <Button onClick={handleClear} variant="outlined">Clear</Button>
-              <Button onClick={handleSave} variant="contained" disabled={loading}>{loading ? 'Saving...' : 'Save'}</Button>
-              <Button onClick={handleLoad} variant="contained">Load</Button>
-            </Stack>
-            <Box display="flex" justifyContent="center">
-              <canvas
-                ref={canvasRef}
-                width={500}
-                height={300}
-                style={{ border: '1px solid #23232b', borderRadius: 8, background: '#18181b' }}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-              />
-            </Box>
-          </CardContent>
-        </Card>
-      </Fade>
-      {imgUrl && (
-        <Fade in={show} timeout={1000}>
-          <Card sx={{ boxShadow: 2 }}>
-            <CardContent>
-              <Typography variant="subtitle2" mb={1}>Saved Drawing:</Typography>
-              <Box display="flex" justifyContent="center">
-                <img src={imgUrl} alt="Saved Drawing" style={{ maxWidth: 500, border: '1px solid #eee', borderRadius: 8 }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Fade>
+    <div className="content-page">
+      <PageHeading
+        title="Think outside the lines."
+        description="Follow a thought. Make a mark. See where it takes you."
+      />
+      {error && (
+        <Alert className="status-message" severity="error">
+          {error}
+        </Alert>
       )}
-      <Fade in={show} timeout={1200}>
-        <Tooltip title="Clear Canvas">
-          <Fab color="secondary" sx={{ position: 'fixed', bottom: 32, right: 32 }} onClick={handleClear}>
-            <ClearIcon />
-          </Fab>
-        </Tooltip>
-      </Fade>
-    </Box>
+      {message && (
+        <Alert className="status-message" severity="success">
+          {message}
+        </Alert>
+      )}
+      <section className="panel">
+        <div className="drawing-toolbar">
+          {colors.map((c) => (
+            <button
+              key={c}
+              disabled={busy}
+              className={`color-button ${color === c ? "selected" : ""}`}
+              style={{ background: c }}
+              aria-label={`Ink color ${c}`}
+              aria-pressed={color === c}
+              onClick={() => setColor(c)}
+            />
+          ))}
+          <label
+            className="muted"
+            style={{
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              marginLeft: 8,
+            }}
+          >
+            Brush{" "}
+            <input
+              type="range"
+              min={1}
+              max={12}
+              value={size}
+              onChange={(e) => setSize(Number(e.target.value))}
+              style={{ width: 70, accentColor: "#35543b" }}
+            />
+          </label>
+          <div style={{ flex: 1 }} />
+          <Button disabled={busy} onClick={clear}>
+            Clear
+          </Button>
+          <Button disabled={busy} onClick={load}>
+            Load saved
+          </Button>
+          <Button variant="contained" disabled={busy} onClick={save}>
+            {busy ? "Please wait…" : "Save drawing"}
+          </Button>
+        </div>
+        <canvas
+          ref={canvas}
+          width={1000}
+          height={600}
+          className="drawing-surface"
+          aria-label="Drawing canvas. Use your mouse, touch screen, or pen to draw."
+          onPointerDown={start}
+          onPointerMove={move}
+          onPointerUp={() => {
+            drawing.current = false;
+          }}
+          onPointerCancel={() => {
+            drawing.current = false;
+          }}
+        />
+        <p className="drawing-hint">
+          Use a mouse, touch, or pen · Save keeps your latest canvas
+        </p>
+      </section>
+    </div>
   );
 }

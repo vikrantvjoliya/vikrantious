@@ -1,133 +1,190 @@
-import { useRef, useState, useEffect } from 'react';
-import { Box, Button, Input, Typography, Stack, Alert, Card, CardContent, Fab, Tooltip, Fade } from '@mui/material';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
-import { supabase } from '../utils/supabaseClient';
-import { useGuestAuth } from '../utils/useGuestAuth';
-
+import { useRef, useState, useEffect, useCallback } from "react";
+import { Button, Alert, CircularProgress } from "@mui/material";
+import UploadFileOutlined from "@mui/icons-material/UploadFileOutlined";
+import DescriptionOutlined from "@mui/icons-material/DescriptionOutlined";
+import { supabase } from "../utils/supabaseClient";
+import { useGuestAuth } from "../utils/useGuestAuth";
+import {
+  validateFile,
+  safeFilename,
+  displayFilename,
+} from "../utils/fileValidation";
+import PageHeading from "../components/PageHeading";
+type StoredFile = {
+  name: string;
+  id: string;
+  metadata?: { size?: number };
+  created_at?: string;
+};
 export default function FileNotesPage() {
   const userId = useGuestAuth();
   const [file, setFile] = useState<File | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [files, setFiles] = useState<any[]>([]); // List of uploaded files
-  const [txtContents, setTxtContents] = useState<Record<string, string>>({});
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [show, setShow] = useState(false);
-  useEffect(() => { setShow(true); }, []);
-
-  // Fetch all files for this user
-  const fetchFiles = async () => {
+  const [busy, setBusy] = useState(false);
+  const [fetching, setFetching] = useState(true);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [files, setFiles] = useState<StoredFile[]>([]);
+  const input = useRef<HTMLInputElement>(null);
+  const folder = `${userId}/documents`;
+  const fetchFiles = useCallback(async () => {
     if (!userId) return;
-    const { data, error } = await supabase.storage.from('notes-files').list('', { limit: 100 });
-    if (error) {
-      setError(error.message);
-      return;
+    setFetching(true);
+    try {
+      const { data, error } = await supabase.storage
+        .from("notes-files")
+        .list(`${userId}/documents`, {
+          limit: 100,
+          sortBy: { column: "created_at", order: "desc" },
+        });
+      if (error) throw error;
+      setFiles((data || []).filter((f) => f.id));
+    } catch {
+      setError("Couldn’t load your files. Please try again.");
+    } finally {
+      setFetching(false);
     }
-    setFiles(data || []);
-    // Fetch .txt content for each .txt file
-    (data || []).forEach(async (file: any) => {
-      if (file.name.endsWith('.txt')) {
-        const { data: urlData } = supabase.storage.from('notes-files').getPublicUrl(file.name);
-        if (urlData?.publicUrl) {
-          fetch(urlData.publicUrl)
-            .then(res => res.text())
-            .then(content => setTxtContents(prev => ({ ...prev, [file.name]: content })))
-            .catch(() => setTxtContents(prev => ({ ...prev, [file.name]: 'Error loading file content.' })));
-        }
-      }
-    });
-  };
-
-  useEffect(() => {
-    fetchFiles();
-    // eslint-disable-next-line
   }, [userId]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0] || null;
-    setFile(f);
-    setError(null);
-  };
-
-  const handleUpload = async () => {
-    if (!file) return;
-    setLoading(true);
-    setError(null);
-    const { error: uploadError } = await supabase.storage.from('notes-files').upload(file.name, file, { upsert: true });
-    if (uploadError) {
-      setError(uploadError.message);
-      setLoading(false);
-      return;
+  useEffect(() => {
+    void fetchFiles();
+  }, [fetchFiles]);
+  const upload = async () => {
+    if (!file || !userId) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const validation = await validateFile(file);
+      if (validation) {
+        setError(validation);
+        return;
+      }
+      const { error } = await supabase.storage
+        .from("notes-files")
+        .upload(
+          `${folder}/${crypto.randomUUID()}_${safeFilename(file.name)}`,
+          file,
+          {
+            upsert: false,
+            contentType: file.name.toLowerCase().endsWith(".pdf")
+              ? "application/pdf"
+              : "text/plain",
+          },
+        );
+      if (error) throw error;
+      setFile(null);
+      if (input.current) input.current.value = "";
+      setMessage("Your file is uploaded.");
+      await fetchFiles();
+    } catch {
+      setError("Couldn’t upload this file. Please try again.");
+    } finally {
+      setBusy(false);
     }
-    setLoading(false);
-    setFile(null);
-    fetchFiles();
   };
-
+  const download = async (name: string) => {
+    setBusy(true);
+    setError("");
+    try {
+      const { data, error } = await supabase.storage
+        .from("notes-files")
+        .download(`${folder}/${name}`);
+      if (error || !data) throw error;
+      const url = URL.createObjectURL(data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = displayFilename(name);
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      setError("Couldn’t download the file. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
-    <Box maxWidth={600} mx="auto" mt={4}>
-      <Fade in={show} timeout={600}>
-        <Card sx={{ mb: 3, boxShadow: 2 }}>
-          <CardContent>
-            <Stack spacing={2}>
-              <Input type="file" inputRef={inputRef} onChange={handleFileChange} />
-              <Button onClick={handleUpload} disabled={!file || loading} variant="contained">
-                {loading ? 'Uploading...' : 'Upload'}
+    <div className="content-page">
+      <PageHeading
+        title="Keep the good stuff."
+        description="Your documents, together and easy to find."
+      />
+      {error && (
+        <Alert
+          className="status-message"
+          severity="error"
+          onClose={() => setError("")}
+        >
+          {error}
+        </Alert>
+      )}
+      {message && (
+        <Alert
+          className="status-message"
+          severity="success"
+          onClose={() => setMessage("")}
+        >
+          {message}
+        </Alert>
+      )}
+      <section className="panel">
+        <div className="upload-zone">
+          <UploadFileOutlined />
+          <h2 style={{ fontSize: 18, fontWeight: 500 }}>
+            A home for your documents
+          </h2>
+          <p>PDF or plain text · Up to 10 MB per file</p>
+          <input
+            ref={input}
+            id="file-upload"
+            type="file"
+            accept=".pdf,.txt,application/pdf,text/plain"
+            disabled={busy}
+            aria-label="Choose a document"
+            onChange={(e) => {
+              setFile(e.target.files?.[0] || null);
+              setError("");
+            }}
+            style={{ maxWidth: "100%", fontSize: 12 }}
+          />
+          <Button variant="contained" disabled={!file || busy} onClick={upload}>
+            {busy ? "Please wait…" : "Upload document"}
+          </Button>
+        </div>
+      </section>
+      <div className="section-heading" style={{ marginTop: 30 }}>
+        <h2>Your collection</h2>
+        <span>Latest 100 documents</span>
+      </div>
+      {fetching ? (
+        <CircularProgress size={24} aria-label="Loading files" />
+      ) : files.length === 0 ? (
+        <div className="empty-state">
+          <DescriptionOutlined />
+          <h2>Keep something worth saving.</h2>
+          <p>Upload your first document to start your collection.</p>
+          <Button onClick={fetchFiles}>Refresh files</Button>
+        </div>
+      ) : (
+        <div className="file-list">
+          {files.map((f) => (
+            <article className="file-row" key={f.id}>
+              <span className="tool-icon lavender">
+                <DescriptionOutlined />
+              </span>
+              <div className="file-info">
+                <h3>{displayFilename(f.name)}</h3>
+                <p>
+                  {Math.max(1, Math.round((f.metadata?.size || 0) / 1024))} KB{" "}
+                  {f.created_at &&
+                    `· ${new Date(f.created_at).toLocaleDateString()}`}
+                </p>
+              </div>
+              <Button disabled={busy} onClick={() => download(f.name)}>
+                Download
               </Button>
-              {error && <Alert severity="error">{error}</Alert>}
-            </Stack>
-          </CardContent>
-        </Card>
-      </Fade>
-      <Typography variant="h6" mb={1}>Your Uploaded Files</Typography>
-      <Fade in={show} timeout={1000}>
-        <Box>
-          {files.length === 0 && <Typography color="text.secondary">No files uploaded yet.</Typography>}
-          {files.map(f => {
-            const { data: urlData } = supabase.storage.from('notes-files').getPublicUrl(f.name);
-            const url = urlData?.publicUrl;
-            if (!url) return null;
-            if (f.name.endsWith('.txt')) {
-              return (
-                <Card key={f.name} sx={{ boxShadow: 2, mb: 2 }}>
-                  <CardContent>
-                    <Typography fontWeight={600}>{f.name}</Typography>
-                    <Typography component="pre" fontSize={14}>{txtContents[f.name] || 'Loading...'}</Typography>
-                  </CardContent>
-                </Card>
-              );
-            }
-            if (f.name.endsWith('.pdf')) {
-              return (
-                <Card key={f.name} sx={{ boxShadow: 2, mb: 2 }}>
-                  <CardContent>
-                    <Typography fontWeight={600}>{f.name}</Typography>
-                    <Box mt={2} border={1} borderRadius={2} overflow="hidden">
-                      <iframe src={url} width="100%" height={500} title={f.name} style={{ border: 0, width: '100%' }} />
-                    </Box>
-                  </CardContent>
-                </Card>
-              );
-            }
-            // Show a link for other file types
-            return (
-              <Card key={f.name} sx={{ boxShadow: 2, mb: 2 }}>
-                <CardContent>
-                  <Typography fontWeight={600}>{f.name}</Typography>
-                  <Button href={url} target="_blank" rel="noopener" variant="outlined">Download</Button>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </Box>
-      </Fade>
-      <Fade in={show} timeout={1200}>
-        <Tooltip title="Upload File">
-          <Fab color="primary" sx={{ position: 'fixed', bottom: 32, right: 32 }} onClick={() => inputRef.current?.click()}>
-            <UploadFileIcon />
-          </Fab>
-        </Tooltip>
-      </Fade>
-    </Box>
+            </article>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

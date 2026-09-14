@@ -1,20 +1,5 @@
-import { useEffect, useState } from 'react';
-
-const LOCAL_STORAGE_KEY = 'guest_user_id';
-
+import { useAuth } from "../auth/AuthContext";
+// Kept as a compatibility hook; identity now comes exclusively from Supabase Auth.
 export function useGuestAuth() {
-  const [userId, setUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    let storedId = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (!storedId) {
-      // Create a new guest user in Supabase (or just generate a UUID)
-      storedId = crypto.randomUUID();
-      localStorage.setItem(LOCAL_STORAGE_KEY, storedId);
-    }
-    setUserId(storedId);
-  }, []);
-
-  // Optionally, you can sync with Supabase auth if needed
-  return userId;
+  return useAuth().user?.id ?? null;
 }
