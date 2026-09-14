@@ -7,7 +7,15 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "supabase:login": "supabase login",
+    "supabase:start": "supabase start",
+    "supabase:db:push": "supabase db push",
+    "supabase:create-bucket": "bash ./scripts/create_supabase_bucket.sh",
+    "db:init": "npm run supabase:db:push",
+    "db:migrate:sql": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f ./supabase/migrations/001_create_tables.sql -f ./supabase/migrations/002_create_files.sql -f ./supabase/migrations/004_secure_workspace.sql",
+    "db:seed": "psql \"$DATABASE_URL\" -f ./supabase/seeds/001_insert_seed_data.sql",
+    "test": "playwright test"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -15,6 +23,7 @@
     "@mui/icons-material": "^7.1.2",
     "@mui/material": "^7.1.2",
     "@supabase/supabase-js": "^2.50.1",
+    "matter-js": "^0.20.0",
     "pdfjs-dist": "^5.3.31",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -22,6 +31,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
+    "@playwright/test": "^1.63.0",
+    "@types/matter-js": "^0.20.2",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.5.2",

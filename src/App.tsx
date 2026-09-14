@@ -1,76 +1,113 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import type { PropsWithChildren, ReactNode } from 'react';
-import AppLayout from './components/AppLayout';
-import NavBar from './components/NavBar';
-import HomePage from './pages/index';
-import TextNotesPage from './pages/text-notes';
-import DrawingNotesPage from './pages/drawing-notes';
-import FileNotesPage from './pages/file-notes';
-import LoginPage from './pages/login';
-import SuikaGamePage from './pages/suika-game';
-import SessionTimeoutHandler from './components/SessionTimeoutHandler';
-
-function RequireAuth({ children }: PropsWithChildren<{ children: ReactNode }>) {
-  const userId = localStorage.getItem('user_id');
+import { Suspense, lazy, useEffect, type ReactNode } from "react";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  Link,
+} from "react-router-dom";
+import { CircularProgress } from "@mui/material";
+import AuthProvider from "./auth/AuthProvider";
+import { useAuth } from "./auth/AuthContext";
+import AppLayout from "./components/AppLayout";
+import HomePage from "./pages/index";
+import LoginPage from "./pages/login";
+import SessionTimeoutHandler from "./components/SessionTimeoutHandler";
+const TextNotesPage = lazy(() => import("./pages/text-notes"));
+const DrawingNotesPage = lazy(() => import("./pages/drawing-notes"));
+const FileNotesPage = lazy(() => import("./pages/file-notes"));
+const SuikaGamePage = lazy(() => import("./pages/suika-game"));
+function RequireAuth({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
   const location = useLocation();
-  if (!userId) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-  return <>{children}</>;
+  if (loading)
+    return (
+      <div className="loading">
+        <CircularProgress aria-label="Loading your workspace" />
+      </div>
+    );
+  return user ? (
+    children
+  ) : (
+    <Navigate to="/login" state={{ from: location.pathname }} replace />
+  );
 }
-
-function App() {
+function RouteEffects() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    const titles: Record<string, string> = {
+      "/": "Overview",
+      "/login": "Sign in",
+      "/text-notes": "Text notes",
+      "/drawing-notes": "Drawing studio",
+      "/file-notes": "Files",
+      "/suika-game": "Fruity Fall",
+    };
+    document.title = `${titles[pathname] || "Page not found"} · Vikrantious`;
+    document.getElementById("main-content")?.focus();
+  }, [pathname]);
+  return null;
+}
+export default function App() {
   return (
     <BrowserRouter>
-      <SessionTimeoutHandler />
-      <AppLayout>
-        <NavBar />
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route
-            path="/"
-            element={
-              <RequireAuth>
-                <HomePage />
-              </RequireAuth>
+      <AuthProvider>
+        <RouteEffects />
+        <SessionTimeoutHandler />
+        <AppLayout>
+          <Suspense
+            fallback={
+              <div className="loading">
+                <CircularProgress aria-label="Loading page" />
+              </div>
             }
-          />
-          <Route
-            path="/text-notes"
-            element={
-              <RequireAuth>
-                <TextNotesPage />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/drawing-notes"
-            element={
-              <RequireAuth>
-                <DrawingNotesPage />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/file-notes"
-            element={
-              <RequireAuth>
-                <FileNotesPage />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/suika-game"
-            element={
-              // <RequireAuth>
-                <SuikaGamePage />
-              // </RequireAuth>
-            }
-          />
-        </Routes>
-      </AppLayout>
+          >
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route
+                path="/text-notes"
+                element={
+                  <RequireAuth>
+                    <TextNotesPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/drawing-notes"
+                element={
+                  <RequireAuth>
+                    <DrawingNotesPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/file-notes"
+                element={
+                  <RequireAuth>
+                    <FileNotesPage />
+                  </RequireAuth>
+                }
+              />
+              <Route path="/suika-game" element={<SuikaGamePage />} />
+              <Route
+                path="*"
+                element={
+                  <div className="empty-state">
+                    <h1>A little off the page.</h1>
+                    <p>We couldn’t find that page.</p>
+                    <Link className="primary-button" to="/">
+                      Back to overview
+                    </Link>
+                  </div>
+                }
+              />
+            </Routes>
+          </Suspense>
+        </AppLayout>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
-
-export default App;

@@ -1,41 +1,121 @@
-import { ThemeProvider, CssBaseline, createTheme, AppBar, Toolbar, Typography, Box, IconButton, Avatar } from '@mui/material';
-import { useMemo, useState } from 'react';
-
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const [mode, setMode] = useState<'light' | 'dark'>('dark');
-  const theme = useMemo(() => createTheme({
-    palette: { mode, background: { default: mode === 'dark' ? '#18181b' : '#f5f5f5' } },
-    shape: { borderRadius: 12 },
-    typography: { fontFamily: 'Inter, Roboto, Arial, sans-serif' },
-  }), [mode]);
-  const username = localStorage.getItem('username');
-
+import {
+  ThemeProvider,
+  CssBaseline,
+  createTheme,
+  Menu,
+  MenuItem,
+  Alert,
+} from "@mui/material";
+import { Link, useLocation } from "react-router-dom";
+import { useState, type ReactNode } from "react";
+import { supabase } from "../utils/supabaseClient";
+import { useAuth } from "../auth/AuthContext";
+import NavBar from "./NavBar";
+import ArrowOutward from "@mui/icons-material/ArrowOutward";
+const theme = createTheme({
+  palette: {
+    mode: "light",
+    primary: { main: "#27634b" },
+    secondary: { main: "#a5643c" },
+    background: { default: "#f8f9f6", paper: "#ffffff" },
+    text: { primary: "#242c28", secondary: "#737b75" },
+  },
+  shape: { borderRadius: 12 },
+  typography: {
+    fontFamily:
+      '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    button: { textTransform: "none", fontWeight: 600 },
+  },
+  components: {
+    MuiButton: {
+      defaultProps: { disableElevation: true },
+      styleOverrides: { root: { padding: "10px 20px" } },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: { boxShadow: "none", border: "1px solid #e4e8e1" },
+      },
+    },
+    MuiOutlinedInput: { styleOverrides: { root: { background: "#fff" } } },
+  },
+});
+const names: Record<string, string> = {
+  "/": "Overview",
+  "/text-notes": "Text notes",
+  "/drawing-notes": "Drawing studio",
+  "/file-notes": "Files",
+  "/suika-game": "Fruity Fall",
+  "/login": "Sign in",
+};
+export default function AppLayout({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  const { user } = useAuth();
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const [logoutError, setLogoutError] = useState(false);
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut({ scope: "local" });
+    setLogoutError(Boolean(error));
+    setAnchor(null);
+  };
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AppBar position="fixed" elevation={0} sx={{ zIndex: theme.zIndex.drawer + 1, background: '#18181b', borderBottom: '1px solid #23232b' }}>
-        <Toolbar sx={{ minHeight: 64, display: 'flex', justifyContent: 'space-between' }}>
-          <Box display="flex" alignItems="center" gap={1}>
-            <Avatar sx={{ bgcolor: '#90caf9', width: 32, height: 32, fontWeight: 700 }}>V</Avatar>
-            <Typography variant="h6" noWrap component="div" fontWeight={700} color="#fff">
-              Vikrantious
-            </Typography>
-          </Box>
-          <Box display="flex" alignItems="center" gap={2}>
-            {username && (
-              <Typography color="#90caf9" fontWeight={600}>{username}</Typography>
-            )}
-            <IconButton color="inherit" onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}>{mode === 'dark' ? '🌞' : '🌙'}</IconButton>
-          </Box>
-        </Toolbar>
-      </AppBar>
-      <Box sx={{ display: 'flex' }}>
-        {/* NavBar is rendered as a permanent Drawer */}
-        <Box component="nav" sx={{ width: 72, flexShrink: 0 }} />
-        <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 4 }, ml: 0, mt: 8, minHeight: '100vh', background: mode === 'dark' ? '#18181b' : '#f5f5f5' }}>
-          {children}
-        </Box>
-      </Box>
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
+      <div className="app-shell">
+        <NavBar />
+        <div className="workspace">
+          <header className="topbar">
+            <div className="breadcrumb">
+              Workspace <span>/</span>{" "}
+              <strong>{names[pathname] || "Page not found"}</strong>
+            </div>
+            <div className="topbar-right">
+              <span className="personal-label">
+                <i /> A little space for big ideas
+              </span>
+              {user ? (
+                <button
+                  className="avatar avatar-button"
+                  aria-label="Account menu"
+                  aria-haspopup="menu"
+                  aria-expanded={Boolean(anchor)}
+                  onClick={(e) => setAnchor(e.currentTarget)}
+                >
+                  {user.email?.[0].toUpperCase() || "V"}
+                </button>
+              ) : (
+                <Link className="signin-link" to="/login">
+                  Sign in <ArrowOutward fontSize="small" />
+                </Link>
+              )}
+            </div>
+          </header>
+          <Menu
+            anchorEl={anchor}
+            open={Boolean(anchor)}
+            onClose={() => setAnchor(null)}
+          >
+            <MenuItem onClick={logout}>Sign out</MenuItem>
+          </Menu>
+          {logoutError && (
+            <Alert severity="error" onClose={() => setLogoutError(false)}>
+              Couldn’t sign out. Please try again.
+            </Alert>
+          )}
+          <main id="main-content" tabIndex={-1}>
+            {children}
+          </main>
+          <footer className="footer">
+            <span>
+              Vikrantious <span className="footer-dot">·</span> Your mind, a
+              little clearer.
+            </span>
+            <span>Made for the everyday.</span>
+          </footer>
+        </div>
+      </div>
     </ThemeProvider>
   );
 }
