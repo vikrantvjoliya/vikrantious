@@ -233,11 +233,20 @@ test("game is public, keyboard playable, and cleans up on navigation", async ({
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
+  await page.addInitScript(() => {
+    Math.random = () => 0;
+  });
   await page.goto("/suika-game");
   const canvas = page.getByLabel("Fruity Fall game.", { exact: false });
   await canvas.focus();
   await page.keyboard.press("ArrowLeft");
   await page.keyboard.press("Space");
+  await expect(page.getByRole("button", { name: "Next fruit…" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Drop fruit" })).toBeEnabled();
+  await page.getByRole("button", { name: "Drop fruit" }).click();
+  await expect(page.getByText("3", { exact: true })).toBeVisible({
+    timeout: 5000,
+  });
   await page.getByRole("button", { name: "Restart", exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   expect(

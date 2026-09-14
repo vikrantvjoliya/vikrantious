@@ -25,6 +25,7 @@ export default function SuikaGamePage() {
   const [score, setScore] = useState(0);
   const [next, setNext] = useState(0);
   const [over, setOver] = useState(false);
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext("2d")!;
@@ -66,6 +67,7 @@ export default function SuikaGamePage() {
       current = fruit(width / 2, 36, queued, true);
       queued = random();
       setNext(queued);
+      setReady(true);
     };
     const moveTo = (x: number) => {
       if (!current || ended) return;
@@ -80,6 +82,7 @@ export default function SuikaGamePage() {
       Body.setStatic(current, false);
       current.born = Date.now();
       current = null;
+      setReady(false);
       dropTimer = setTimeout(spawn, 650);
     };
     const restart = () => {
@@ -92,6 +95,7 @@ export default function SuikaGamePage() {
       current = null;
       setScore(0);
       setOver(false);
+      setReady(false);
       queued = random();
       spawn();
     };
@@ -252,20 +256,22 @@ export default function SuikaGamePage() {
               variant="outlined"
               aria-label="Move fruit left"
               onClick={() => controls.current.move(-25)}
+              disabled={!ready || over}
             >
               ←
             </Button>
             <Button
               variant="contained"
               onClick={() => controls.current.drop()}
-              disabled={over}
+              disabled={!ready || over}
             >
-              Drop fruit
+              {ready ? "Drop fruit" : "Next fruit…"}
             </Button>
             <Button
               variant="outlined"
               aria-label="Move fruit right"
               onClick={() => controls.current.move(25)}
+              disabled={!ready || over}
             >
               →
             </Button>
