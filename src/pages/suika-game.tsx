@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@mui/material";
 import Matter from "matter-js";
 import PageHeading from "../components/PageHeading";
+import { createFruitBody, releaseFruit, type FruitBody } from "../game/physics";
 const { Engine, Runner, Bodies, Body, Composite, Events } = Matter;
 const fruits = [
   { radius: 14, color: "#e6a2a2", label: "Cherry", points: 1 },
@@ -13,7 +14,6 @@ const fruits = [
   { radius: 65, color: "#e6c57a", label: "Melon", points: 28 },
   { radius: 80, color: "#8bb58a", label: "Watermelon", points: 36 },
 ];
-type FruitBody = Matter.Body & { level?: number; born?: number };
 export default function SuikaGamePage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controls = useRef<{
@@ -52,13 +52,7 @@ export default function SuikaGamePage() {
     ];
     const random = () => Math.floor(Math.random() * 4);
     const fruit = (x: number, y: number, level: number, isStatic = false) => {
-      const body: FruitBody = Bodies.circle(x, y, fruits[level].radius, {
-        isStatic,
-        restitution: 0.15,
-        friction: 0.3,
-      });
-      body.level = level;
-      body.born = Date.now();
+      const body = createFruitBody(x, y, fruits[level].radius, level, isStatic);
       Composite.add(engine.world, body);
       return body;
     };
@@ -79,8 +73,7 @@ export default function SuikaGamePage() {
     };
     const drop = () => {
       if (!current || ended) return;
-      Body.setStatic(current, false);
-      current.born = Date.now();
+      releaseFruit(current);
       current = null;
       setReady(false);
       dropTimer = setTimeout(spawn, 650);
@@ -172,6 +165,8 @@ export default function SuikaGamePage() {
           y - f.radius < 85
         ) {
           ended = true;
+          clearTimeout(dropTimer);
+          setReady(false);
           setOver(true);
         }
       }
@@ -191,13 +186,13 @@ export default function SuikaGamePage() {
     };
   }, []);
   return (
-    <div className="content-page">
+    <div className="content-page game-page">
       <PageHeading
         title="A little play. A fresh perspective."
         description="Meet Fruity Fall. Match, merge, and enjoy a moment away."
       />
       <div className="game-layout">
-        <section>
+        <section className="game-play">
           <div className="game-stats">
             <div>
               <span>YOUR SCORE</span>
@@ -205,7 +200,7 @@ export default function SuikaGamePage() {
             </div>
             <div>
               <span>UP NEXT</span>
-              <strong style={{ fontSize: 20, color: "#687b55" }}>
+              <strong className="next-fruit-label">
                 {fruits[next].label}
               </strong>
             </div>
@@ -222,7 +217,9 @@ export default function SuikaGamePage() {
                 controls.current.aim(target);
               }}
               onPointerDown={(e) => {
+                if (!e.isPrimary || e.button !== 0) return;
                 e.preventDefault();
+                e.currentTarget.focus({ preventScroll: true });
                 const rect = e.currentTarget.getBoundingClientRect();
                 controls.current.aim(
                   ((e.clientX - rect.left) * 420) / rect.width,
@@ -232,6 +229,7 @@ export default function SuikaGamePage() {
               onKeyDown={(e) => {
                 if (["ArrowLeft", "ArrowRight", " ", "Enter"].includes(e.key)) {
                   e.preventDefault();
+                  if (e.repeat && [" ", "Enter"].includes(e.key)) return;
                   if (e.key === "ArrowLeft") controls.current.move(-18);
                   else if (e.key === "ArrowRight") controls.current.move(18);
                   else controls.current.drop();
@@ -265,7 +263,7 @@ export default function SuikaGamePage() {
               onClick={() => controls.current.drop()}
               disabled={!ready || over}
             >
-              {ready ? "Drop fruit" : "Next fruit…"}
+              {over ? "Game over" : ready ? "Drop fruit" : "Next fruit…"}
             </Button>
             <Button
               variant="outlined"

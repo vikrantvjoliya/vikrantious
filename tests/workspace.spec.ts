@@ -45,7 +45,7 @@ async function authenticate(page: Page) {
 test("overview, mobile navigation, and forged legacy identity protection", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/workspace");
   await expect(
     page.getByRole("heading", { name: "A space to make it yours." }),
   ).toBeVisible();
@@ -60,7 +60,7 @@ test("overview, mobile navigation, and forged legacy identity protection", async
   await page.goto("/text-notes");
   await expect(page).toHaveURL("/login");
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/workspace");
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -243,10 +243,31 @@ test("game is public, keyboard playable, and cleans up on navigation", async ({
   await page.keyboard.press("Space");
   await expect(page.getByRole("button", { name: "Next fruit…" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Drop fruit" })).toBeEnabled();
+  // Scoring can still change when broken physics produces NaN positions.
+  // Check actual painted fruit pixels near the floor before testing a merge.
+  await expect.poll(async () => canvas.evaluate((element) => {
+    const c = element as HTMLCanvasElement;
+    const pixels = c.getContext('2d')!.getImageData(0, 400, c.width, 160).data;
+    let fruitPixels = 0;
+    for (let i = 0; i < pixels.length; i += 4) {
+      if (pixels[i] === 230 && pixels[i+1] === 162 && pixels[i+2] === 162 && pixels[i+3] === 255) fruitPixels++;
+    }
+    return fruitPixels;
+  }), { timeout: 5000 }).toBeGreaterThan(200);
   await page.getByRole("button", { name: "Drop fruit" }).click();
   await expect(page.getByText("3", { exact: true })).toBeVisible({
     timeout: 5000,
   });
+  await expect.poll(async () => canvas.evaluate((element) => {
+    const c = element as HTMLCanvasElement;
+    const pixels = c.getContext('2d')!.getImageData(0, 400, c.width, 160).data;
+    let fruitPixels = 0;
+    for (let i = 0; i < pixels.length; i += 4) {
+      if (pixels[i] === 234 && pixels[i+1] === 196 && pixels[i+2] === 146 && pixels[i+3] === 255) fruitPixels++;
+    }
+    return fruitPixels;
+  }), { timeout: 5000 }).toBeGreaterThan(400);
+  await page.screenshot({ path: 'test-results/game-landed.png', fullPage: true });
   await page.getByRole("button", { name: "Restart", exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   expect(
