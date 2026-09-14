@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, Link } from "react-router-dom";
 import { Alert } from "@mui/material";
 import GridViewRounded from "@mui/icons-material/GridViewRounded";
+import PersonOutlineRounded from "@mui/icons-material/PersonOutlineRounded";
 import DescriptionOutlined from "@mui/icons-material/DescriptionOutlined";
 import GestureRounded from "@mui/icons-material/GestureRounded";
 import FolderOutlined from "@mui/icons-material/FolderOutlined";
@@ -11,7 +12,8 @@ import ArrowForwardRounded from "@mui/icons-material/ArrowForwardRounded";
 import { useAuth } from "../auth/AuthContext";
 import { supabase } from "../utils/supabaseClient";
 const links = [
-  { to: "/", label: "Overview", icon: <GridViewRounded /> },
+  { to: "/", label: "Résumé", icon: <PersonOutlineRounded /> },
+  { to: "/workspace", label: "Overview", icon: <GridViewRounded /> },
   { to: "/text-notes", label: "Text notes", icon: <DescriptionOutlined /> },
   { to: "/drawing-notes", label: "Drawing studio", icon: <GestureRounded /> },
   { to: "/file-notes", label: "Files", icon: <FolderOutlined /> },
@@ -26,11 +28,9 @@ export default function NavBar() {
   return (
     <aside className="sidebar">
       <Link className="brand" to="/" aria-label="Vikrantious home">
-        <span className="brand-mark">
-          v<span>.</span>
-        </span>
+        <img className="brand-logo" src="/vk-logo.svg" alt="VK" width="42" height="42" />
         <span>
-          vikrantious<span className="brand-caption">PERSONAL WORKSPACE</span>
+          vikrantious<span className="brand-caption">VIKRANT JOLIYA</span>
         </span>
       </Link>
       <div className="nav-section-label">YOUR WORKSPACE</div>

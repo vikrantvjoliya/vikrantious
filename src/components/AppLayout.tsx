@@ -5,20 +5,36 @@ import {
   Menu,
   MenuItem,
   Alert,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import { Link, useLocation } from "react-router-dom";
-import { useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "../utils/supabaseClient";
 import { useAuth } from "../auth/AuthContext";
 import NavBar from "./NavBar";
 import ArrowOutward from "@mui/icons-material/ArrowOutward";
-const theme = createTheme({
+import LightModeOutlined from "@mui/icons-material/LightModeOutlined";
+import DarkModeOutlined from "@mui/icons-material/DarkModeOutlined";
+import ContrastRounded from "@mui/icons-material/ContrastRounded";
+import "../themes.css";
+
+type ThemePreference = "system" | "light" | "dark";
+function getPreference(): ThemePreference {
+  try {
+    const saved = localStorage.getItem("vk-theme");
+    return saved === "light" || saved === "dark" ? saved : "system";
+  } catch { return "system"; }
+}
+
+const makeTheme = (dark: boolean) => createTheme({
   palette: {
-    mode: "light",
-    primary: { main: "#27634b" },
-    secondary: { main: "#a5643c" },
-    background: { default: "#f8f9f6", paper: "#ffffff" },
-    text: { primary: "#242c28", secondary: "#737b75" },
+    mode: dark ? "dark" : "light",
+    primary: { main: dark ? "#b7d79c" : "#27634b" },
+    secondary: { main: dark ? "#deb18f" : "#a5643c" },
+    background: { default: dark ? "#151b18" : "#f8f9f6", paper: dark ? "#1d2620" : "#ffffff" },
+    text: { primary: dark ? "#e9eee3" : "#242c28", secondary: dark ? "#adb9a8" : "#697461" },
+    divider: dark ? "#344336" : "#e4e8e1",
   },
   shape: { borderRadius: 12 },
   typography: {
@@ -33,14 +49,15 @@ const theme = createTheme({
     },
     MuiCard: {
       styleOverrides: {
-        root: { boxShadow: "none", border: "1px solid #e4e8e1" },
+        root: { boxShadow: "none", border: `1px solid ${dark ? '#344336' : '#e4e8e1'}` },
       },
     },
-    MuiOutlinedInput: { styleOverrides: { root: { background: "#fff" } } },
+    MuiOutlinedInput: { styleOverrides: { root: { background: dark ? "#1d2620" : "#fff" } } },
   },
 });
 const names: Record<string, string> = {
-  "/": "Overview",
+  "/": "Résumé",
+  "/workspace": "Overview",
   "/text-notes": "Text notes",
   "/drawing-notes": "Drawing studio",
   "/file-notes": "Files",
@@ -52,6 +69,23 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const [logoutError, setLogoutError] = useState(false);
+  const [preference, setPreference] = useState<ThemePreference>(getPreference);
+  const [systemDark, setSystemDark] = useState(() => window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const [themeAnchor, setThemeAnchor] = useState<HTMLElement | null>(null);
+  const dark = preference === "dark" || (preference === "system" && systemDark);
+  const theme = useMemo(() => makeTheme(dark), [dark]);
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const update = () => setSystemDark(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    document.documentElement.style.colorScheme = dark ? "dark" : "light";
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#151b18" : "#f8f9f6");
+    try { localStorage.setItem("vk-theme", preference); } catch { /* Theme still works when storage is unavailable. */ }
+  }, [dark, preference]);
   const logout = async () => {
     const { error } = await supabase.auth.signOut({ scope: "local" });
     setLogoutError(Boolean(error));
@@ -68,13 +102,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <div className="workspace">
           <header className="topbar">
             <div className="breadcrumb">
-              Workspace <span>/</span>{" "}
+              <Link className="mobile-brand" to="/" aria-label="Vikrantious home"><img src="/vk-logo.svg" alt="VK" width="29" height="29" /></Link><span className="breadcrumb-root">Vikrantious</span> <span>/</span>{" "}
               <strong>{names[pathname] || "Page not found"}</strong>
             </div>
             <div className="topbar-right">
               <span className="personal-label">
                 <i /> A little space for big ideas
               </span>
+              <Tooltip title="Choose theme"><IconButton aria-label="Choose theme" aria-haspopup="menu" aria-expanded={Boolean(themeAnchor)} onClick={e => setThemeAnchor(e.currentTarget)} size="small">{preference === "system" ? <ContrastRounded fontSize="small" /> : dark ? <DarkModeOutlined fontSize="small" /> : <LightModeOutlined fontSize="small" />}</IconButton></Tooltip>
               {user ? (
                 <button
                   className="avatar avatar-button"
@@ -92,6 +127,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               )}
             </div>
           </header>
+          <Menu anchorEl={themeAnchor} open={Boolean(themeAnchor)} onClose={() => setThemeAnchor(null)}>
+            {(["system", "light", "dark"] as const).map(value => <MenuItem key={value} role="menuitemradio" aria-checked={preference === value} selected={preference === value} onClick={() => { setPreference(value); setThemeAnchor(null); }}>{value === "system" ? "Use device theme" : `${value[0].toUpperCase()}${value.slice(1)} theme`}</MenuItem>)}
+          </Menu>
           <Menu
             anchorEl={anchor}
             open={Boolean(anchor)}

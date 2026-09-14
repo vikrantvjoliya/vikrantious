@@ -12,6 +12,7 @@ import AuthProvider from "./auth/AuthProvider";
 import { useAuth } from "./auth/AuthContext";
 import AppLayout from "./components/AppLayout";
 import HomePage from "./pages/index";
+import ResumePage from "./pages/resume";
 import LoginPage from "./pages/login";
 import SessionTimeoutHandler from "./components/SessionTimeoutHandler";
 const TextNotesPage = lazy(() => import("./pages/text-notes"));
@@ -38,7 +39,8 @@ function RouteEffects() {
   useEffect(() => {
     window.scrollTo(0, 0);
     const titles: Record<string, string> = {
-      "/": "Overview",
+      "/": "Vikrant Joliya · Résumé",
+      "/workspace": "Overview",
       "/login": "Sign in",
       "/text-notes": "Text notes",
       "/drawing-notes": "Drawing studio",
@@ -65,7 +67,9 @@ export default function App() {
             }
           >
             <Routes>
-              <Route path="/" element={<HomePage />} />
+              <Route path="/" element={<ResumePage />} />
+              <Route path="/resume" element={<Navigate to="/" replace />} />
+              <Route path="/workspace" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route
                 path="/text-notes"
@@ -99,7 +103,7 @@ export default function App() {
                     <h1>A little off the page.</h1>
                     <p>We couldn’t find that page.</p>
                     <Link className="primary-button" to="/">
-                      Back to overview
+                      Back to home
                     </Link>
                   </div>
                 }
