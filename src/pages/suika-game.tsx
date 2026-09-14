@@ -200,9 +200,7 @@ export default function SuikaGamePage() {
             </div>
             <div>
               <span>UP NEXT</span>
-              <strong className="next-fruit-label">
-                {fruits[next].label}
-              </strong>
+              <strong className="next-fruit-label">{fruits[next].label}</strong>
             </div>
             <Button onClick={() => controls.current.restart()}>Restart</Button>
           </div>

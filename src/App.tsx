@@ -69,7 +69,14 @@ export default function App() {
             <Routes>
               <Route path="/" element={<ResumePage />} />
               <Route path="/resume" element={<Navigate to="/" replace />} />
-              <Route path="/workspace" element={<HomePage />} />
+              <Route
+                path="/workspace"
+                element={
+                  <RequireAuth>
+                    <HomePage />
+                  </RequireAuth>
+                }
+              />
               <Route path="/login" element={<LoginPage />} />
               <Route
                 path="/text-notes"

@@ -40,25 +40,36 @@ async function authenticate(page: Page) {
   await page.getByLabel("Email address").fill(user.email);
   await page.getByLabel(/Password/).fill("test-password");
   await page.getByRole("button", { name: "Sign in to workspace" }).click();
-  await expect(page).toHaveURL("/");
+  await expect(page).not.toHaveURL(/\/login/);
 }
 test("overview, mobile navigation, and forged legacy identity protection", async ({
   page,
 }) => {
   await page.goto("/workspace");
-  await expect(
-    page.getByRole("heading", { name: "A space to make it yours." }),
-  ).toBeVisible();
-  await page.screenshot({
-    path: "test-results/overview-desktop.png",
-    fullPage: true,
-  });
+  await expect(page).toHaveURL("/login");
   await page.evaluate(() => {
     localStorage.setItem("user_id", "forged-owner");
     localStorage.setItem("guest_user_id", "forged-owner");
   });
   await page.goto("/text-notes");
   await expect(page).toHaveURL("/login");
+  await authenticate(page);
+  await page.goto("/workspace");
+  await expect(
+    page.getByRole("heading", { name: "Welcome back." }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Main navigation" }),
+  ).not.toBeVisible();
+  await page.getByRole("button", { name: "Open navigation" }).click();
+  await expect(
+    page.getByRole("navigation", { name: "Main navigation" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Close navigation" }).last().click();
+  await page.screenshot({
+    path: "test-results/overview-desktop.png",
+    fullPage: true,
+  });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/workspace");
   expect(
@@ -67,19 +78,20 @@ test("overview, mobile navigation, and forged legacy identity protection", async
     ),
   ).toBe(true);
   await expect(
-    page.getByRole("navigation").getByText("Files", { exact: true }),
+    page.getByRole("button", { name: "Open navigation" }),
   ).toBeVisible();
   await page.screenshot({
     path: "test-results/overview-mobile.png",
     fullPage: true,
   });
+  await page.getByRole("button", { name: "Open navigation" }).click();
   await page
     .getByRole("navigation")
     .getByText("Files", { exact: true })
     .click();
-  await expect(page).toHaveURL("/login");
+  await expect(page).toHaveURL("/file-notes");
   await page.screenshot({
-    path: "test-results/login-mobile.png",
+    path: "test-results/files-mobile.png",
     fullPage: true,
   });
 });
@@ -241,33 +253,71 @@ test("game is public, keyboard playable, and cleans up on navigation", async ({
   await canvas.focus();
   await page.keyboard.press("ArrowLeft");
   await page.keyboard.press("Space");
-  await expect(page.getByRole("button", { name: "Next fruit…" })).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Next fruit…" }),
+  ).toBeDisabled();
   await expect(page.getByRole("button", { name: "Drop fruit" })).toBeEnabled();
   // Scoring can still change when broken physics produces NaN positions.
   // Check actual painted fruit pixels near the floor before testing a merge.
-  await expect.poll(async () => canvas.evaluate((element) => {
-    const c = element as HTMLCanvasElement;
-    const pixels = c.getContext('2d')!.getImageData(0, 400, c.width, 160).data;
-    let fruitPixels = 0;
-    for (let i = 0; i < pixels.length; i += 4) {
-      if (pixels[i] === 230 && pixels[i+1] === 162 && pixels[i+2] === 162 && pixels[i+3] === 255) fruitPixels++;
-    }
-    return fruitPixels;
-  }), { timeout: 5000 }).toBeGreaterThan(200);
+  await expect
+    .poll(
+      async () =>
+        canvas.evaluate((element) => {
+          const c = element as HTMLCanvasElement;
+          const pixels = c
+            .getContext("2d")!
+            .getImageData(0, 400, c.width, 160).data;
+          let fruitPixels = 0;
+          for (let i = 0; i < pixels.length; i += 4) {
+            if (
+              pixels[i] === 230 &&
+              pixels[i + 1] === 162 &&
+              pixels[i + 2] === 162 &&
+              pixels[i + 3] === 255
+            )
+              fruitPixels++;
+          }
+          return fruitPixels;
+        }),
+      { timeout: 5000 },
+    )
+    .toBeGreaterThan(200);
   await page.getByRole("button", { name: "Drop fruit" }).click();
   await expect(page.getByText("3", { exact: true })).toBeVisible({
     timeout: 5000,
   });
-  await expect.poll(async () => canvas.evaluate((element) => {
-    const c = element as HTMLCanvasElement;
-    const pixels = c.getContext('2d')!.getImageData(0, 400, c.width, 160).data;
-    let fruitPixels = 0;
-    for (let i = 0; i < pixels.length; i += 4) {
-      if (pixels[i] === 234 && pixels[i+1] === 196 && pixels[i+2] === 146 && pixels[i+3] === 255) fruitPixels++;
-    }
-    return fruitPixels;
-  }), { timeout: 5000 }).toBeGreaterThan(400);
-  await page.screenshot({ path: 'test-results/game-landed.png', fullPage: true });
+  await expect
+    .poll(
+      async () =>
+        canvas.evaluate((element) => {
+          const c = element as HTMLCanvasElement;
+          const pixels = c
+            .getContext("2d")!
+            .getImageData(0, 400, c.width, 160).data;
+          let fruitPixels = 0;
+          for (let i = 0; i < pixels.length; i += 4) {
+            if (
+              pixels[i] === 234 &&
+              pixels[i + 1] === 196 &&
+              pixels[i + 2] === 146 &&
+              pixels[i + 3] === 255
+            )
+              fruitPixels++;
+          }
+          return fruitPixels;
+        }),
+      { timeout: 5000 },
+    )
+    .toBeGreaterThan(400);
+  expect(
+    await page
+      .locator(".skip-link")
+      .evaluate((element) => element.getBoundingClientRect().bottom),
+  ).toBeLessThanOrEqual(0);
+  await page.screenshot({
+    path: "test-results/game-landed.png",
+    fullPage: false,
+  });
   await page.getByRole("button", { name: "Restart", exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   expect(
@@ -279,7 +329,9 @@ test("game is public, keyboard playable, and cleans up on navigation", async ({
     path: "test-results/game-mobile.png",
     fullPage: true,
   });
-  await page.getByRole("link", { name: "Overview", exact: true }).click();
+  await page.getByRole("button", { name: "Open navigation" }).click();
+  await page.getByRole("link", { name: "Résumé", exact: true }).click();
+  await page.getByRole("button", { name: "Open navigation" }).click();
   await page
     .getByRole("navigation")
     .getByRole("link", { name: /Fruity Fall/ })
