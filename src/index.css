@@ -722,14 +722,16 @@ p {
 }
 .skip-link {
   position: fixed;
-  top: -100px;
+  top: 0;
   left: 20px;
   z-index: 100;
   background: white;
   padding: 15px;
+  transform: translateY(-150%);
 }
-.skip-link:focus {
+.skip-link:focus-visible {
   top: 10px;
+  transform: translateY(0);
 }
 .loading {
   min-height: 45vh;

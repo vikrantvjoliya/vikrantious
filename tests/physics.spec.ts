@@ -19,7 +19,7 @@ test("a held fruit restores finite mass and lands inside the jar", () => {
   }
   expect(fruit.position.y).toBeGreaterThan(530);
   expect(fruit.position.y).toBeLessThan(537);
-  expect(Math.abs(fruit.velocity.y)).toBeLessThan(.1);
+  expect(Math.abs(fruit.velocity.y)).toBeLessThan(0.1);
   Matter.Engine.clear(engine);
 });
 
@@ -28,7 +28,9 @@ test("a waiting fruit cannot collide with a fruit that has already dropped", () 
   const waiting = createFruitBody(210, 36, 27, 2, true);
   const falling = createFruitBody(210, 36, 27, 2);
   let collisions = 0;
-  Matter.Events.on(engine, 'collisionStart', () => { collisions++; });
+  Matter.Events.on(engine, "collisionStart", () => {
+    collisions++;
+  });
   Matter.Composite.add(engine.world, [waiting, falling]);
   for (let i = 0; i < 60; i++) Matter.Engine.update(engine, 1000 / 60);
   expect(collisions).toBe(0);
