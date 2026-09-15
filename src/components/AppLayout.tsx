@@ -9,7 +9,14 @@ import {
   Tooltip,
 } from "@mui/material";
 import { Link, useLocation } from "react-router-dom";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { supabase } from "../utils/supabaseClient";
 import { useAuth } from "../auth/AuthContext";
 import NavBar from "./NavBar";
@@ -19,6 +26,7 @@ import DarkModeOutlined from "@mui/icons-material/DarkModeOutlined";
 import ContrastRounded from "@mui/icons-material/ContrastRounded";
 import MenuRounded from "@mui/icons-material/MenuRounded";
 import "../themes.css";
+const VirtualPet = lazy(() => import("./pet/VirtualPet"));
 
 type ThemePreference = "system" | "light" | "dark" | "pokemon" | "god-of-war";
 function getPreference(): ThemePreference {
@@ -147,6 +155,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      <Suspense fallback={null}>
+        <VirtualPet />
+      </Suspense>
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>

@@ -1,4 +1,7 @@
 .env
+.dev.vars
+.dev.vars.*
+.wrangler/
 # Logs
 logs
 *.log
