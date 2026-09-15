@@ -18,7 +18,7 @@ export default function FlowerClicks() {
       if (event.pointerType === "mouse" && event.button !== 0) return;
       if (
         (event.target as Element).closest(
-          "a,button,input,textarea,[role=button],[role=menuitem],[role=menuitemradio]",
+          "a,button,input,textarea,[data-no-bloom],[role=button],[role=menuitem],[role=menuitemradio]",
         )
       )
         return;

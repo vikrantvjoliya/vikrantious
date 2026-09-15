@@ -4,6 +4,8 @@ A personal workspace for text notes, drawings, documents, and a small fruit-merg
 
 ## Develop
 
+The optional virtual companion includes draggable SVG characters, resizing, animations, preferences, and authenticated AI chat. See [Companion setup and controls](docs/companion.md) for the Cloudflare Function configuration.
+
 Use Node.js 22.12+ or 24. Copy `.env.example` to `.env` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. Only the public publishable/anon key belongs in the frontend; never a service-role key or database password.
 
 ```sh
